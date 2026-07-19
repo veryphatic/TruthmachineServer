@@ -1,0 +1,59 @@
+{
+  "listen_addr": ":5000",
+  "osc_target": "localhost:53000",
+  "osc_listen_addr": ":8765",
+  "timing": {
+    "calibrate_s": 25,
+    "interrogate_s": 3,
+    "cooldown_s": 5,
+    "stale_after_s": 2,
+    "disconnect_after_s": 10
+  },
+  "scoring": {
+    "default_sensitivity": 1,
+    "weight_gsr": 0.4,
+    "weight_hr": 0.4,
+    "weight_rr": 0.2
+  },
+  "degraded": {
+    "grace_s": 5,
+    "estimate_window_n": 5,
+    "elevate_prob_low": 0.10,
+    "elevate_prob_high": 0.15,
+    "elevate_count_low": 3,
+    "elevate_count_high": 6
+  },
+  "gsr": {
+    "baseline_alpha": 0.005,
+    "sigma_floor": 10,
+    "min_contact_adc": 50,
+    "max_contact_adc": 4060,
+    "max_contact_recover_adc": 4050,
+    "display_smooth_n": 8,
+    "clamp_min_adc": 100,
+    "clamp_max_adc": 4000
+  },
+  "hr": {
+    "baseline_alpha": 0.005,
+    "sigma_floor": 3,
+    "min_valid_bpm": 30,
+    "max_valid_bpm": 250,
+    "warmup_s": 2,
+    "clamp_min_bpm": 40,
+    "clamp_max_bpm": 140
+  },
+  "rr": {
+    "baseline_alpha": 0.01,
+    "sigma_floor": 1.5,
+    "clamp_min_bpm": 6,
+    "clamp_max_bpm": 40
+  },
+  "stub": {
+    "breathe_bpm": 14
+  },
+  "mute": {
+    "gsr": false,
+    "hr": false,
+    "rr": false
+  }
+}
