@@ -14,14 +14,19 @@ func main() {
 	replayHR := flag.String("replay-hr", "", "path to an HR JSONL log for replay")
 	replayQLab := flag.String("replay-qlab", "", "path to a v2 JSONL log with type:\"osc\" records")
 	noStub := flag.Bool("no-stub-rr", false, "disable the synthetic RR stub")
-	cfgPath := flag.String("config", "truthmachine.json", "path to JSON config file")
+	cfgFlag := flag.String("config", "", "path to JSON config file (default: truthmachine.json next to the executable)")
 	flag.Parse()
 
+	cfgPath := *cfgFlag
+	if cfgPath == "" {
+		cfgPath = defaultConfigPath()
+	}
+
 	// Write default config if the file doesn't exist yet, then load it.
-	if err := writeDefaultConfig(*cfgPath); err != nil {
+	if err := writeDefaultConfig(cfgPath); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: could not write default config: %v\n", err)
 	}
-	cfg, err := loadConfig(*cfgPath)
+	cfg, err := loadConfig(cfgPath)
 	if err != nil && !os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, "warn: config error (%v) — using defaults\n", err)
 		cfg = defaultConfig()
@@ -93,7 +98,7 @@ func main() {
 		go stub.Run(stubStop)
 	}
 
-	stopWatch := watchConfig(*cfgPath, log, func(c Config) {
+	stopWatch := watchConfig(cfgPath, log, func(c Config) {
 		applyTimings(c.Timing)
 		applyScoringCfg(c.Scoring)
 		applyDegradedCfg(c.Degraded)
@@ -119,7 +124,7 @@ func main() {
 	}, gsrProc, hrProc, rrProc, events, log)
 
 	initMuted := [3]bool{cfg.Mute.GSR, cfg.Mute.HR, cfg.Mute.RR}
-	m := newModel(gsrProc, hrProc, rrProc, events, log, *cfgPath, initMuted, bridge)
+	m := newModel(gsrProc, hrProc, rrProc, events, log, cfgPath, initMuted, bridge)
 	prog := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 
 	if _, err := prog.Run(); err != nil {

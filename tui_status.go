@@ -20,7 +20,7 @@ func renderStatus(m model) string {
 
 func renderStatusChannel(s ChannelSnapshot, muted bool) string {
 	name := [...]string{"GSR", "HR", "RR"}[s.Channel]
-	port := ":5000" // all channels share one TCP port in v2
+	port := listenAddr // all channels share one TCP port in v2
 
 	var dot, dotLabel string
 	if muted {

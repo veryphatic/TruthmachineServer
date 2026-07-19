@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 )
@@ -159,6 +160,24 @@ func defaultConfig() Config {
 		},
 		Mute: MuteCfg{GSR: false, HR: false, RR: false},
 	}
+}
+
+// defaultConfigPath returns "truthmachine.json" next to the running executable
+// rather than relative to the process's working directory. Double-clicking the
+// binary (the operator's normal launch path, no terminal) does not reliably set
+// cwd to the executable's own folder, so resolving via os.Executable() ensures
+// the config sitting beside the binary is the one that's actually read.
+func defaultConfigPath() string {
+	const fallback = "truthmachine.json"
+	exe, err := os.Executable()
+	if err != nil {
+		return fallback
+	}
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return fallback
+	}
+	return filepath.Join(filepath.Dir(exe), "truthmachine.json")
 }
 
 // loadConfig reads path into a Config, starting from defaults so any missing
