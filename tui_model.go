@@ -38,6 +38,7 @@ const (
 	viewDashboard viewMode = iota
 	viewLog
 	viewHelp
+	viewHistory
 )
 
 // ── Model ─────────────────────────────────────────────────────────────────────
@@ -82,10 +83,11 @@ type model struct {
 	logLines  []string // raw JSONL lines (un-styled); re-filtered on every append + filter change
 	logFilter logFilter
 
-	// Dashboard and help panes (bubbles/viewport) — scroll via ↑/↓/PgUp/PgDn
-	// when their rendered content is taller than the terminal window.
-	dashVP viewport.Model
-	helpVP viewport.Model
+	// Dashboard, help, and full history panes (bubbles/viewport) — scroll via
+	// ↑/↓/PgUp/PgDn when their rendered content is taller than the terminal window.
+	dashVP    viewport.Model
+	helpVP    viewport.Model
+	historyVP viewport.Model
 
 	// Input modal
 	inputMode inputKind
@@ -126,6 +128,7 @@ func newModel(gsr *GSRProcessor, hr *HRProcessor, rr *RRProcessor,
 	m.logVP = initLogViewport(m.width, m.height)
 	m.dashVP = viewport.New(m.width, m.height)
 	m.helpVP = viewport.New(m.width, m.height)
+	m.historyVP = viewport.New(m.width, m.height)
 	return m
 }
 
@@ -163,6 +166,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.view == viewHelp {
 			m.helpVP.SetContent(buildHelpPanel(m.width))
 		}
+		m.historyVP.Width = m.width
+		m.historyVP.Height = m.height
+		if m.view == viewHistory {
+			m.historyVP.SetContent(buildHistoryPanel(m))
+		}
 		return m, nil
 
 	case TickMsg:
@@ -180,6 +188,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// in Update() (which never runs View()'s throwaway model copy) has
 		// real line data to scroll against.
 		m.dashVP.SetContent(renderDashboard(m))
+		if m.view == viewHistory {
+			m.historyVP.SetContent(buildHistoryPanel(m))
+		}
 		return m, tickCmd()
 
 	case ScoredMsg:
@@ -233,6 +244,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.insertManualL(msg.L)
 		return m, waitForEvent(m.events)
 
+	case ShowHistoryMsg:
+		m.view = viewHistory
+		m.historyVP.SetContent(buildHistoryPanel(m))
+		m.historyVP.GotoTop()
+		return m, waitForEvent(m.events)
+
 	case StateChangeMsg, QualityChangeMsg:
 		return m, waitForEvent(m.events)
 
@@ -276,6 +293,18 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "up", "down", "pgup", "pgdown":
 			var cmd tea.Cmd
 			m.helpVP, cmd = m.helpVP.Update(msg)
+			return m, cmd
+		}
+		m.view = viewDashboard
+		return m, nil
+	}
+
+	// History view: arrow/page keys scroll, any other key closes.
+	if m.view == viewHistory {
+		switch msg.String() {
+		case "up", "down", "pgup", "pgdown":
+			var cmd tea.Cmd
+			m.historyVP, cmd = m.historyVP.Update(msg)
 			return m, cmd
 		}
 		m.view = viewDashboard
@@ -334,6 +363,11 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "l":
 		m.view = viewLog
 		m.logVP.GotoBottom()
+
+	case "h":
+		m.view = viewHistory
+		m.historyVP.SetContent(buildHistoryPanel(m))
+		m.historyVP.GotoTop()
 
 	case "?":
 		m.view = viewHelp
@@ -591,6 +625,8 @@ func (m model) View() string {
 		content = renderLogView(m)
 	case viewHelp:
 		content = renderHelp(m)
+	case viewHistory:
+		content = renderHistoryView(m)
 	default:
 		dash := renderDashboard(m)
 		if m.inputMode != inputNone {
@@ -652,6 +688,7 @@ func renderFooter(m model) string {
 		{"r", "andom-low", accent},
 		{"u", "mute", accent},
 		{"l", "og", accent},
+		{"h", "istory", accent},
 		{"x", " reset", resetStyle},
 		{"?", "help", accent},
 		{"q", "uit", qStyle},

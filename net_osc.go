@@ -17,7 +17,7 @@ import (
 //
 // Inbound:  /calibrate, /interrogate, /reset, /baseline, /sensitivity <k>,
 //
-//	/mute/gsr, /mute/hr, /mute/rr, /random_low, /manual_l <L>.
+//	/mute/gsr, /mute/hr, /mute/rr, /random_low, /manual_l <L>, /history.
 type OSCBridge struct {
 	host   string
 	port   int
@@ -133,6 +133,9 @@ func (b *OSCBridge) startInbound(listenAddr string) error {
 	})
 	addFloat("/manual_l", func(L float64) {
 		pushEvent(ProcessorEvent{Kind: ProcEventManualL, Value: L})
+	})
+	add("/history", func() {
+		pushEvent(ProcessorEvent{Kind: ProcEventShowHistory})
 	})
 
 	server := &osc.Server{Addr: listenAddr, Dispatcher: d}

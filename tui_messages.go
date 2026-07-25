@@ -70,6 +70,9 @@ type RandomLowMsg struct{}
 // ManualLMsg fires on OSC /manual_l; L is the raw (not yet clamped) override value.
 type ManualLMsg struct{ L float64 }
 
+// ShowHistoryMsg fires on OSC /history — same as [h] hotkey.
+type ShowHistoryMsg struct{}
+
 // ── Command factories ─────────────────────────────────────────────────────────
 
 func tickCmd() tea.Cmd {
@@ -106,6 +109,8 @@ func waitForEvent(events EventSink) tea.Cmd {
 			return RandomLowMsg{}
 		case ProcEventManualL:
 			return ManualLMsg{L: e.Value}
+		case ProcEventShowHistory:
+			return ShowHistoryMsg{}
 		default:
 			return TickMsg(e.T)
 		}
