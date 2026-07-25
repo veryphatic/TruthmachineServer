@@ -14,7 +14,8 @@ type BaselineTracker struct {
 	n          int
 	frozen     bool
 	calibrated bool
-	freshenN   int // samples remaining before auto-recalibration after a freshen
+	freshenN   int       // samples remaining before auto-recalibration after a freshen
+	freshenBuf []float64 // samples collected during the current freshen warmup window
 
 	alpha      float64
 	sigmaFloor float64
@@ -38,20 +39,24 @@ func (b *BaselineTracker) freshen(warmupN int) {
 	b.calibrated = false
 	b.frozen = false
 	b.freshenN = warmupN
+	b.freshenBuf = nil
 }
 
 // update slides the EWMA with a 3σ gate to reject arousal spikes.
-// During the post-freshen warmup window, it counts down freshenN and
-// re-sets calibrated automatically once the warmup completes.
+// During the post-freshen warmup window, it buffers samples and batch-seeds
+// a fresh μ/σ from them (via calibrate) once the warmup completes, instead
+// of silently resuming EWMA drift from the pre-freshen baseline.
 func (b *BaselineTracker) update(raw float64) {
 	if b.frozen {
 		return
 	}
 	if !b.calibrated {
 		if b.freshenN > 0 {
+			b.freshenBuf = append(b.freshenBuf, raw)
 			b.freshenN--
 			if b.freshenN == 0 {
-				b.calibrated = true
+				b.calibrate(b.freshenBuf)
+				b.freshenBuf = nil
 			}
 		}
 		return
