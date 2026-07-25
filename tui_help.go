@@ -58,7 +58,7 @@ func renderHelp(m model) string {
 
 	// ── Data values ───────────────────────────────────────────────────────────
 	sb.WriteString(h.Render("DATA VALUES") + "\n")
-	sb.WriteString(row("L  (lie likelihood)",   "0–100 scale.  " +
+	sb.WriteString(row("L  (lie likelihood)",   "0–100 raw score, sent to QLab clamped 1–99.  " +
 		red.Render("<33 red") + "  " +
 		amb.Render("33–65 amber") + "  " +
 		grn.Render("≥66 green")) + "\n")
@@ -68,6 +68,21 @@ func renderHelp(m model) string {
 	sb.WriteString(row("σ  (sigma)", "Adaptive baseline std dev.  Floors: GSR=10  HR=3.0  RR=1.5") + "\n")
 	sb.WriteString(row("z  (z-score)", "Standard deviations from baseline.  L = 100 × tanh(k × z / 2)") + "\n")
 	sb.WriteString(row("Combined L", "Weighted: GSR×0.5 + HR×0.3 + RR×0.2.  Muted/disconnected excluded.") + "\n")
+
+	sb.WriteString("\n")
+
+	// ── OSC commands ──────────────────────────────────────────────────────────
+	sb.WriteString(h.Render("OSC COMMANDS") + "\n")
+	sb.WriteString(d.Render("Inbound (QLab → server, no arguments):") + "\n")
+	sb.WriteString(row("/calibrate",   "Starts 15s batch calibration on all channels") + "\n")
+	sb.WriteString(row("/interrogate", "Starts 8s scoring window on all channels") + "\n")
+	sb.WriteString(row("/reset",       "Freshens baselines + clears history — same as [x][y], no confirm") + "\n")
+	sb.WriteString(d.Render("Outbound (server → QLab):") + "\n")
+	sb.WriteString(row("/cue/l{N}/start",    "N = 1–99 combined L — once per completed interrogation") + "\n")
+	sb.WriteString(row("/cue/bpm{NNN}/start","NNN = zero-padded BPM — throttled to 1/sec") + "\n")
+	sb.WriteString(row("/cue/g{N}/start",    "N = 1–20 GSR cue id — throttled to 1 per 3s") + "\n")
+	sb.WriteString(row("/cue/r{N}/start",    "N = 1–20 respiration cue id — throttled to 1 per 3s") + "\n")
+	sb.WriteString(row("/cue/p/start",       "Pulse beat — fires in real time at the current BPM rate") + "\n")
 
 	sb.WriteString("\n")
 
