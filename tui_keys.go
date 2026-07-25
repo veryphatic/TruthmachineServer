@@ -12,6 +12,7 @@ type keyMap struct {
 	RandomLow   key.Binding
 	Mute        key.Binding
 	Log         key.Binding
+	Reset       key.Binding
 	Quit        key.Binding
 }
 
@@ -24,5 +25,6 @@ var keys = keyMap{
 	RandomLow:   key.NewBinding(key.WithKeys("r"), key.WithHelp("[r]", "random-low")),
 	Mute:        key.NewBinding(key.WithKeys("u"), key.WithHelp("[u]", "mute")),
 	Log:         key.NewBinding(key.WithKeys("l"), key.WithHelp("[l]", "log")),
+	Reset:       key.NewBinding(key.WithKeys("x"), key.WithHelp("[x]", "reset")),
 	Quit:        key.NewBinding(key.WithKeys("q"), key.WithHelp("[q]", "quit")),
 }

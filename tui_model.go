@@ -182,12 +182,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitForEvent(m.events)
 
 	case BaselineFreshenedMsg:
-		m.lastFreshen = time.Now()
-		m.histNext++
-		m.history = append(m.history, ScoreRecord{
-			N: m.histNext, Time: time.Now(), IsFresh: true,
-			GSR_L: -1, HR_L: -1, RR_L: -1,
-		})
+		m = m.appendFreshenRow(true)
 		return m, waitForEvent(m.events)
 
 	case InterrogateStartMsg:
@@ -261,12 +256,11 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.gsrProc.FreshenBaseline()
 		m.hrProc.FreshenBaseline()
 		m.rrProc.FreshenBaseline()
-		m.lastFreshen = time.Now()
-		m.histNext++
-		m.history = append(m.history, ScoreRecord{
-			N: m.histNext, Time: time.Now(), IsFresh: true,
-			GSR_L: -1, HR_L: -1, RR_L: -1,
-		})
+		m = m.appendFreshenRow(false)
+
+	case "x":
+		m.inputMode = inputResetConfirm
+		return m, nil
 
 	case "m":
 		m.inputMode = inputManualL
@@ -355,6 +349,18 @@ func (m model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if m.inputMode == inputResetConfirm {
+		if strings.ToLower(msg.String()) == "y" {
+			m.gsrProc.FreshenBaseline()
+			m.hrProc.FreshenBaseline()
+			m.rrProc.FreshenBaseline()
+			m.log.Event(channelSystem, "reset", "source", "keyboard")
+			m = m.appendFreshenRow(true)
+		}
+		m.inputMode = inputNone
+		return m, nil
+	}
+
 	var cmd tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
 	return m, cmd
@@ -399,6 +405,23 @@ func (m model) applyModal() (tea.Model, tea.Cmd) {
 	}
 	m.inputMode = inputNone
 	return m, nil
+}
+
+// appendFreshenRow records a baseline-freshen event in the history table.
+// When clearHistory is true (OSC /reset, [x] confirmed reset), it wipes the
+// existing table first so the new row becomes #1 of a fresh performance.
+func (m model) appendFreshenRow(clearHistory bool) model {
+	m.lastFreshen = time.Now()
+	if clearHistory {
+		m.history = nil
+		m.histNext = 0
+	}
+	m.histNext++
+	m.history = append(m.history, ScoreRecord{
+		N: m.histNext, Time: time.Now(), IsFresh: true,
+		GSR_L: -1, HR_L: -1, RR_L: -1,
+	})
+	return m
 }
 
 // ── Score aggregation helpers ─────────────────────────────────────────────────
@@ -540,6 +563,7 @@ func renderFooter(m model) string {
 	if m.quitArmed {
 		qStyle = lipgloss.NewStyle().Foreground(colRed)
 	}
+	resetStyle := lipgloss.NewStyle().Foreground(colRed)
 
 	type item struct {
 		key, label string
@@ -554,6 +578,7 @@ func renderFooter(m model) string {
 		{"r", "andom-low", accent},
 		{"u", "mute", accent},
 		{"l", "og", accent},
+		{"x", " reset", resetStyle},
 		{"?", "help", accent},
 		{"q", "uit", qStyle},
 	}

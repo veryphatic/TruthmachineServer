@@ -50,6 +50,7 @@ func renderHelp(m model) string {
 	sb.WriteString(row("[r]  random low",   "Insert a random 1–5 L value (calibration cover story)") + "\n")
 	sb.WriteString(row("[u]  mute",         "Toggle a channel out of the combined L weighting") + "\n")
 	sb.WriteString(row("[l]  log",          "Full-screen live JSONL event log — PgUp/PgDn to scroll, [l]/esc to close") + "\n")
+	sb.WriteString(row("[x]  reset",        "Confirm [y] to clear ALL baselines + history — marks end of performance") + "\n")
 	sb.WriteString(row("[?]  help",         "This screen — any key to close") + "\n")
 	sb.WriteString(row("[q]  quit",         "Press twice within 2.5s to exit") + "\n")
 

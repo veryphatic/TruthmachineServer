@@ -16,6 +16,7 @@ const (
 	inputSensitivity
 	inputManualL
 	inputMute
+	inputResetConfirm
 )
 
 var (
@@ -65,12 +66,16 @@ func renderModal(m model, _ string) string {
 		title = "MUTE / UNMUTE CHANNEL"
 		prompt = "Press [g] GSR   [h] Heart Rate   [r] Resp Rate"
 		hint = "toggles channel mute · esc cancel"
+	case inputResetConfirm:
+		title = "CONFIRM RESET — END PERFORMANCE"
+		prompt = "This clears ALL channel baselines and the entire interrogation history."
+		hint = "[y] confirm · any other key cancels"
 	}
 
 	var body strings.Builder
 	body.WriteString(modalTitleStyle.Render(title) + "\n\n")
 	body.WriteString(lipgloss.NewStyle().Foreground(colText).Background(modalBGCol).Render(prompt) + "\n\n")
-	if m.inputMode != inputMute {
+	if m.inputMode != inputMute && m.inputMode != inputResetConfirm {
 		body.WriteString(m.textInput.View() + "\n\n")
 	} else {
 		body.WriteString("\n")
