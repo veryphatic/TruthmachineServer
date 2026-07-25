@@ -123,6 +123,11 @@ func main() {
 		QLabLog: *replayQLab,
 	}, gsrProc, hrProc, rrProc, events, log)
 
+	// Request a fixed terminal window size on launch. This is a best-effort
+	// xterm escape sequence (rows;cols) — Terminal.app and iTerm2 honor it,
+	// other terminal emulators silently ignore it.
+	fmt.Fprintf(os.Stdout, "\x1b[8;%d;%dt", 61, 93)
+
 	initMuted := [3]bool{cfg.Mute.GSR, cfg.Mute.HR, cfg.Mute.RR}
 	m := newModel(gsrProc, hrProc, rrProc, events, log, cfgPath, initMuted, bridge)
 	prog := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
