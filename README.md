@@ -138,7 +138,7 @@ Configure QLab's OSC input to match the port in `osc_target`.
 | `s` | Set sensitivity multiplier (0.1–5.0) |
 | `b` | Freshen baseline (same as OSC `/reset`) |
 | `m` | Inject a manual L value (0–100) — also fires `/cue/l{N}/start` to QLab |
-| `r` | Inject a random low score (1–50) — also fires `/cue/l{N}/start` to QLab |
+| `r` | Inject a random low score (1–5) — also fires `/cue/l{N}/start` to QLab |
 | `u` then `g`/`h`/`r` | Toggle mute for GSR / Heart Rate / Resp Rate; mute state saved to config |
 | `l` | Toggle full-screen log view (shows all OSC in/out by default) |
 | `?` | Help screen |
