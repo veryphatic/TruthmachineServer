@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -123,10 +125,7 @@ func main() {
 		QLabLog: *replayQLab,
 	}, gsrProc, hrProc, rrProc, events, log)
 
-	// Request a fixed terminal window size on launch. This is a best-effort
-	// xterm escape sequence (rows;cols) — Terminal.app and iTerm2 honor it,
-	// other terminal emulators silently ignore it.
-	fmt.Fprintf(os.Stdout, "\x1b[8;%d;%dt", 61, 93)
+	resizeTerminal(93, 61)
 
 	initMuted := [3]bool{cfg.Mute.GSR, cfg.Mute.HR, cfg.Mute.RR}
 	m := newModel(gsrProc, hrProc, rrProc, events, log, cfgPath, initMuted, bridge)
@@ -139,4 +138,26 @@ func main() {
 	}
 
 	close(stubStop)
+}
+
+// resizeTerminal requests a fixed terminal window size (in character cells)
+// on launch. This is best-effort and terminal-specific:
+//   - iTerm2 (and other xterm-compatible emulators) honor the xterm window-ops
+//     escape sequence written straight to stdout.
+//   - Apple's Terminal.app never implemented that escape sequence, but it is
+//     AppleScript-scriptable, so we shell out to osascript to resize the
+//     front window instead.
+// Any other terminal (or non-mac OS) is left alone.
+func resizeTerminal(cols, rows int) {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	switch os.Getenv("TERM_PROGRAM") {
+	case "Apple_Terminal":
+		script := fmt.Sprintf(`tell application "Terminal" to set number of columns of front window to %d
+tell application "Terminal" to set number of rows of front window to %d`, cols, rows)
+		_ = exec.Command("osascript", "-e", script).Run()
+	case "iTerm.app":
+		fmt.Fprintf(os.Stdout, "\x1b[8;%d;%dt", rows, cols)
+	}
 }
