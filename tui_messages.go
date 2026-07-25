@@ -55,6 +55,21 @@ type BaselineFreshenedMsg struct{}
 // than the keyboard hotkey (OSC, replay), so the score-aggregation round still starts.
 type InterrogateStartMsg struct{}
 
+// BaselineRefreshMsg fires on OSC /baseline — same as [b] hotkey, history untouched.
+type BaselineRefreshMsg struct{}
+
+// SensitivitySetMsg fires on OSC /sensitivity; K is already clamped to 0.1–5.0.
+type SensitivitySetMsg struct{ K float64 }
+
+// MuteToggleMsg fires on OSC /mute/{gsr,hr,rr}.
+type MuteToggleMsg struct{ Channel ChannelID }
+
+// RandomLowMsg fires on OSC /random_low — same as [r] hotkey.
+type RandomLowMsg struct{}
+
+// ManualLMsg fires on OSC /manual_l; L is the raw (not yet clamped) override value.
+type ManualLMsg struct{ L float64 }
+
 // ── Command factories ─────────────────────────────────────────────────────────
 
 func tickCmd() tea.Cmd {
@@ -81,6 +96,16 @@ func waitForEvent(events EventSink) tea.Cmd {
 			return BaselineFreshenedMsg{}
 		case ProcEventInterrogateStart:
 			return InterrogateStartMsg{}
+		case ProcEventBaselineRefresh:
+			return BaselineRefreshMsg{}
+		case ProcEventSensitivity:
+			return SensitivitySetMsg{K: e.Value}
+		case ProcEventMuteToggle:
+			return MuteToggleMsg{Channel: e.Channel}
+		case ProcEventRandomLow:
+			return RandomLowMsg{}
+		case ProcEventManualL:
+			return ManualLMsg{L: e.Value}
 		default:
 			return TickMsg(e.T)
 		}

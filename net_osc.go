@@ -15,7 +15,9 @@ import (
 //
 //	/cue/r{1-20}/start, /cue/p/start.
 //
-// Inbound:  /calibrate, /interrogate, /reset.
+// Inbound:  /calibrate, /interrogate, /reset, /baseline, /sensitivity <k>,
+//
+//	/mute/gsr, /mute/hr, /mute/rr, /random_low, /manual_l <L>.
 type OSCBridge struct {
 	host   string
 	port   int
@@ -56,6 +58,28 @@ func (b *OSCBridge) startInbound(listenAddr string) error {
 		})
 	}
 
+	// addFloat registers a handler for addresses that carry one numeric argument.
+	// Malformed/missing arguments are logged and dropped rather than applied.
+	addFloat := func(addr string, fn func(v float64)) {
+		d.AddMsgHandler(addr, func(msg *osc.Message) {
+			v, ok := firstFloatArg(msg)
+			if !ok {
+				b.log.Event(channelSystem, "osc_error", "dir", "in", "address", msg.Address, "err", "missing or invalid numeric argument")
+				return
+			}
+			b.log.LogOSC("in", msg.Address, []any{v})
+			fn(v)
+		})
+	}
+
+	pushEvent := func(e ProcessorEvent) {
+		e.T = time.Now()
+		select {
+		case b.events <- e:
+		default: // drop if TUI event queue is full
+		}
+	}
+
 	add("/calibrate", func() {
 		b.gsr.StartCalibrate()
 		b.hr.StartCalibrate()
@@ -82,6 +106,33 @@ func (b *OSCBridge) startInbound(listenAddr string) error {
 		case b.events <- ProcessorEvent{Kind: ProcEventFreshen, T: time.Now()}:
 		default: // drop if TUI event queue is full
 		}
+	})
+	add("/baseline", func() {
+		b.gsr.FreshenBaseline()
+		b.hr.FreshenBaseline()
+		b.rr.FreshenBaseline()
+		pushEvent(ProcessorEvent{Kind: ProcEventBaselineRefresh})
+	})
+	addFloat("/sensitivity", func(k float64) {
+		if k < 0.1 {
+			k = 0.1
+		}
+		if k > 5.0 {
+			k = 5.0
+		}
+		b.gsr.SetSensitivity(k)
+		b.hr.SetSensitivity(k)
+		b.rr.SetSensitivity(k)
+		pushEvent(ProcessorEvent{Kind: ProcEventSensitivity, Value: k})
+	})
+	add("/mute/gsr", func() { pushEvent(ProcessorEvent{Kind: ProcEventMuteToggle, Channel: ChannelGSR}) })
+	add("/mute/hr", func() { pushEvent(ProcessorEvent{Kind: ProcEventMuteToggle, Channel: ChannelHR}) })
+	add("/mute/rr", func() { pushEvent(ProcessorEvent{Kind: ProcEventMuteToggle, Channel: ChannelRR}) })
+	add("/random_low", func() {
+		pushEvent(ProcessorEvent{Kind: ProcEventRandomLow})
+	})
+	addFloat("/manual_l", func(L float64) {
+		pushEvent(ProcessorEvent{Kind: ProcEventManualL, Value: L})
 	})
 
 	server := &osc.Server{Addr: listenAddr, Dispatcher: d}
@@ -179,6 +230,30 @@ func (b *OSCBridge) send(address string) {
 		return
 	}
 	b.log.LogOSC("out", address, nil)
+}
+
+// firstFloatArg extracts the first OSC argument as a float64, accepting
+// whichever numeric (or numeric-string) type the sender tagged it as —
+// QLab and other OSC senders vary between float32/int32/string for typed args.
+func firstFloatArg(msg *osc.Message) (float64, bool) {
+	if len(msg.Arguments) == 0 {
+		return 0, false
+	}
+	switch v := msg.Arguments[0].(type) {
+	case float32:
+		return float64(v), true
+	case float64:
+		return v, true
+	case int32:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case string:
+		f, err := strconv.ParseFloat(v, 64)
+		return f, err == nil
+	default:
+		return 0, false
+	}
 }
 
 // oscLerp maps val from [srcMin,srcMax] → [dstMin,dstMax], clamped.

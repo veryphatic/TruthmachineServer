@@ -189,6 +189,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m, cmd := m.startPendingRound()
 		return m, tea.Batch(cmd, waitForEvent(m.events))
 
+	case BaselineRefreshMsg:
+		m = m.appendFreshenRow(false)
+		return m, waitForEvent(m.events)
+
+	case SensitivitySetMsg:
+		m.sensitivity = msg.K
+		return m, waitForEvent(m.events)
+
+	case MuteToggleMsg:
+		m.muted[msg.Channel] = !m.muted[msg.Channel]
+		if m.cfgPath != "" {
+			if err := saveMuteConfig(m.cfgPath, m.muted); err != nil {
+				m.log.Event(channelSystem, "config_error", "err", err.Error())
+			}
+		}
+		return m, waitForEvent(m.events)
+
+	case RandomLowMsg:
+		m = m.insertRandomLow()
+		return m, waitForEvent(m.events)
+
+	case ManualLMsg:
+		m = m.insertManualL(msg.L)
+		return m, waitForEvent(m.events)
+
 	case StateChangeMsg, QualityChangeMsg:
 		return m, waitForEvent(m.events)
 
@@ -268,19 +293,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 
 	case "r":
-		// Random low: 1–5
-		l := float64(1 + time.Now().UnixNano()%5)
-		m.histNext++
-		m.history = append(m.history, ScoreRecord{
-			N: m.histNext, Time: time.Now(),
-			GSR_L: -1, HR_L: -1, RR_L: -1,
-			Combined: l, IsForced: true,
-		})
-		m.combinedL = l
-		m.log.Event(channelSystem, "random_low", "L", l)
-		if m.osc != nil {
-			m.osc.SendL(l)
-		}
+		m = m.insertRandomLow()
 
 	case "u":
 		m.inputMode = inputMute
@@ -384,23 +397,7 @@ func (m model) applyModal() (tea.Model, tea.Cmd) {
 		}
 	case inputManualL:
 		if L, err := strconv.ParseFloat(val, 64); err == nil {
-			if L < 0 {
-				L = 0
-			}
-			if L > 100 {
-				L = 100
-			}
-			m.histNext++
-			m.history = append(m.history, ScoreRecord{
-				N: m.histNext, Time: time.Now(),
-				GSR_L: -1, HR_L: -1, RR_L: -1,
-				Combined: L, IsForced: true,
-			})
-			m.combinedL = L
-			m.log.Event(channelSystem, "manual_l", "L", L)
-			if m.osc != nil {
-				m.osc.SendL(L)
-			}
+			m = m.insertManualL(L)
 		}
 	}
 	m.inputMode = inputNone
@@ -421,6 +418,47 @@ func (m model) appendFreshenRow(clearHistory bool) model {
 		N: m.histNext, Time: time.Now(), IsFresh: true,
 		GSR_L: -1, HR_L: -1, RR_L: -1,
 	})
+	return m
+}
+
+// insertRandomLow appends a random 1–5 L value to history (calibration cover story)
+// and sends it to QLab. Shared by the [r] hotkey and OSC /random_low.
+func (m model) insertRandomLow() model {
+	l := float64(1 + time.Now().UnixNano()%5)
+	m.histNext++
+	m.history = append(m.history, ScoreRecord{
+		N: m.histNext, Time: time.Now(),
+		GSR_L: -1, HR_L: -1, RR_L: -1,
+		Combined: l, IsForced: true,
+	})
+	m.combinedL = l
+	m.log.Event(channelSystem, "random_low", "L", l)
+	if m.osc != nil {
+		m.osc.SendL(l)
+	}
+	return m
+}
+
+// insertManualL clamps L to 0–100, appends it to history, and sends it to QLab.
+// Shared by the [m] modal and OSC /manual_l.
+func (m model) insertManualL(L float64) model {
+	if L < 0 {
+		L = 0
+	}
+	if L > 100 {
+		L = 100
+	}
+	m.histNext++
+	m.history = append(m.history, ScoreRecord{
+		N: m.histNext, Time: time.Now(),
+		GSR_L: -1, HR_L: -1, RR_L: -1,
+		Combined: L, IsForced: true,
+	})
+	m.combinedL = L
+	m.log.Event(channelSystem, "manual_l", "L", L)
+	if m.osc != nil {
+		m.osc.SendL(L)
+	}
 	return m
 }
 

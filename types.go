@@ -103,6 +103,11 @@ const (
 	ProcEventQualityChange
 	ProcEventFreshen
 	ProcEventInterrogateStart // pushed whenever /interrogate fires from any source (OSC, replay), so the TUI's score-aggregation round starts even without the keyboard hotkey
+	ProcEventBaselineRefresh  // OSC /baseline — same as [b] hotkey: freshen only, history untouched
+	ProcEventSensitivity      // OSC /sensitivity — Value carries the (already-clamped) k applied to all processors
+	ProcEventMuteToggle       // OSC /mute/{gsr,hr,rr} — Channel identifies which to toggle
+	ProcEventRandomLow        // OSC /random_low — same as [r] hotkey
+	ProcEventManualL          // OSC /manual_l — Value carries the L override
 )
 
 type ProcessorEvent struct {
@@ -114,6 +119,7 @@ type ProcessorEvent struct {
 	N           int         // ProcEventScored
 	IsEstimated bool        // ProcEventScored — true if L is a degraded-channel fallback estimate
 	Mu, Sigma   float64     // ProcEventCalibrated
+	Value       float64     // ProcEventSensitivity (k), ProcEventManualL (L)
 	T           time.Time
 }
 
