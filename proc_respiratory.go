@@ -68,9 +68,11 @@ type RRProcessor struct {
 
 	IsStub bool // set by stub.go when synthetic data is active
 
-	degradedSince time.Time // zero when quality is OK; set when it first becomes non-OK
-	recentScores  []float64 // rolling history of real (non-estimated) L scores, for the degraded fallback
-	intCount      int       // interrogations started, for the elevate-probability ramp
+	degradedSince     time.Time // zero when quality is OK; set when it first becomes non-OK
+	recentScores      []float64 // rolling history of real (non-estimated) L scores, for the degraded fallback
+	intCount          int       // interrogations started, for the elevate-probability ramp
+	ambientEstimateL  float64   // cached fallback L for the periodic ambient cue
+	ambientEstimateAt time.Time // when ambientEstimateL was last (re)computed
 
 	events EventSink
 	log    *AppLogger
@@ -325,6 +327,16 @@ func (p *RRProcessor) Snapshot() ChannelSnapshot {
 
 	z, L := p.sc.score(p.currentRR, p.baseline.mu, p.baseline.sigma())
 
+	estimated := false
+	if !p.degradedSince.IsZero() && time.Since(p.degradedSince) >= degradedGrace() {
+		if p.ambientEstimateAt.IsZero() || time.Since(p.ambientEstimateAt) >= degradedAmbientRefresh {
+			p.ambientEstimateL, _ = estimateL(p.recentScores, p.intCount, getDegradedCfg())
+			p.ambientEstimateAt = time.Now()
+		}
+		z, L = 0, p.ambientEstimateL
+		estimated = true
+	}
+
 	return ChannelSnapshot{
 		Channel:      ChannelRR,
 		DisplayValue: p.currentRR,
@@ -337,6 +349,7 @@ func (p *RRProcessor) Snapshot() ChannelSnapshot {
 		StateRemainS: rem,
 		Calibrated:   p.baseline.calibrated,
 		IsStub:       p.IsStub,
+		IsEstimated:  estimated,
 		Sparkline:    p.rrSparkRing.lastSparkline(),
 		LastSample:   p.lastSample,
 	}
@@ -393,6 +406,7 @@ func (p *RRProcessor) FreshenBaseline() {
 	p.recentScores = nil
 	p.intCount = 0
 	p.degradedSince = time.Time{}
+	p.ambientEstimateAt = time.Time{}
 	p.log.Event(ChannelRR, "freshen_baseline", "mu", p.baseline.mu, "sigma", p.baseline.sigma())
 }
 

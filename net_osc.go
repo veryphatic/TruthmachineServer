@@ -215,7 +215,7 @@ func (b *OSCBridge) SendPeriodic(snaps [3]ChannelSnapshot) {
 	}
 
 	rr := snaps[ChannelRR]
-	if now.Sub(b.lastRR) >= 3*time.Second && (rr.Quality == QualityOK || rr.IsStub) {
+	if now.Sub(b.lastRR) >= 3*time.Second && (rr.Quality == QualityOK || rr.IsStub || rr.IsEstimated) {
 		b.send(fmt.Sprintf("/cue/r%d/start", oscLerp(0, 100, rr.L, 1, 20)))
 		b.lastRR = now
 	}
