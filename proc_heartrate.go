@@ -323,18 +323,24 @@ func (p *HRProcessor) StartCalibrate() {
 	p.log.Event(ChannelHR, "start_calibrate")
 }
 
+// StartInterrogate begins a new interrogation window. If the channel is in
+// COOLDOWN, the new request debounces (kills) the warmdown and starts
+// immediately instead of waiting it out — the new window still emits its
+// own L value on completion via the normal doScore() path.
 func (p *HRProcessor) StartInterrogate() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	if p.state != StateIdle {
+	if p.state != StateIdle && p.state != StateCooldown {
 		return
 	}
+	cooldownSkipped := p.state == StateCooldown
+	p.cooldownEnd = time.Time{}
 	p.intBuf = nil
 	p.intEnd = time.Now().Add(intDuration())
 	p.baseline.frozen = true
 	p.intCount++
 	p.setState(StateInterrogating)
-	p.log.Event(ChannelHR, "start_interrogate", "mu", p.baseline.mu, "sigma", p.baseline.sigma())
+	p.log.Event(ChannelHR, "start_interrogate", "mu", p.baseline.mu, "sigma", p.baseline.sigma(), "cooldown_skipped", cooldownSkipped)
 }
 
 func (p *HRProcessor) SetSensitivity(k float64) {
