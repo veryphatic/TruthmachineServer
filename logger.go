@@ -25,7 +25,11 @@ func newLogger() (*AppLogger, error) {
 	// Resolve against the executable's directory, not the process's working
 	// directory — double-clicking the binary doesn't reliably cwd there, and
 	// logs need to land beside the binary like the config file does.
-	base := filepath.Join(exeDir(), "truthmachine-v2-"+time.Now().Format("2006-01-02"))
+	logDir := filepath.Join(exeDir(), "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, fmt.Errorf("create log dir: %w", err)
+	}
+	base := filepath.Join(logDir, "truthmachine-v2-"+time.Now().Format("2006-01-02"))
 	f, err := os.OpenFile(base+".log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("open log: %w", err)
