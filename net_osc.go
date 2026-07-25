@@ -138,8 +138,8 @@ func (b *OSCBridge) SendL(L float64) {
 	if n < 1 {
 		n = 1
 	}
-	if n > 100 {
-		n = 100
+	if n > 99 {
+		n = 99
 	}
 	b.send(fmt.Sprintf("/cue/l%d/start", n))
 }
@@ -158,13 +158,13 @@ func (b *OSCBridge) SendPeriodic(snaps [3]ChannelSnapshot) {
 	}
 
 	gsr := snaps[ChannelGSR]
-	if now.Sub(b.lastGSR) >= time.Second && (gsr.Quality == QualityOK || gsr.IsEstimated) {
+	if now.Sub(b.lastGSR) >= 3*time.Second && (gsr.Quality == QualityOK || gsr.IsEstimated) {
 		b.send(fmt.Sprintf("/cue/g%d/start", oscLerp(0, 100, gsr.L, 1, 20)))
 		b.lastGSR = now
 	}
 
 	rr := snaps[ChannelRR]
-	if now.Sub(b.lastRR) >= time.Second && (rr.Quality == QualityOK || rr.IsStub) {
+	if now.Sub(b.lastRR) >= 3*time.Second && (rr.Quality == QualityOK || rr.IsStub) {
 		b.send(fmt.Sprintf("/cue/r%d/start", oscLerp(0, 100, rr.L, 1, 20)))
 		b.lastRR = now
 	}
