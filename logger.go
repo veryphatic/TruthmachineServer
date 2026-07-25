@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -16,12 +17,15 @@ type AppLogger struct {
 	mu    sync.Mutex
 	LogCh chan string
 
-	baseName    string // e.g. "truthmachine-v2-2026-07-25", used to build rotated file names
+	baseName    string // e.g. "truthmachine-v2-2026-07-25" (with dir), used to build rotated file names
 	rotateIndex int    // last "-N" suffix used by Rotate; 0 means still on the original file
 }
 
 func newLogger() (*AppLogger, error) {
-	base := "truthmachine-v2-" + time.Now().Format("2006-01-02")
+	// Resolve against the executable's directory, not the process's working
+	// directory — double-clicking the binary doesn't reliably cwd there, and
+	// logs need to land beside the binary like the config file does.
+	base := filepath.Join(exeDir(), "truthmachine-v2-"+time.Now().Format("2006-01-02"))
 	f, err := os.OpenFile(base+".log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("open log: %w", err)

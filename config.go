@@ -168,16 +168,23 @@ func defaultConfig() Config {
 // cwd to the executable's own folder, so resolving via os.Executable() ensures
 // the config sitting beside the binary is the one that's actually read.
 func defaultConfigPath() string {
-	const fallback = "truthmachine.json"
+	return filepath.Join(exeDir(), "truthmachine.json")
+}
+
+// exeDir returns the directory containing the running executable, falling
+// back to "." (the process's working directory) if it can't be determined.
+// Used so files the app writes (config, logs) land beside the binary instead
+// of wherever the process happened to be launched from.
+func exeDir() string {
 	exe, err := os.Executable()
 	if err != nil {
-		return fallback
+		return "."
 	}
 	exe, err = filepath.EvalSymlinks(exe)
 	if err != nil {
-		return fallback
+		return "."
 	}
-	return filepath.Join(filepath.Dir(exe), "truthmachine.json")
+	return filepath.Dir(exe)
 }
 
 // loadConfig reads path into a Config, starting from defaults so any missing
