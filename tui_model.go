@@ -491,10 +491,10 @@ func (m model) appendFreshenRow(clearHistory bool) model {
 	return m
 }
 
-// insertRandomLow appends a random 1–5 L value to history (calibration cover story)
+// insertRandomLow appends a random 1–50 L value to history (calibration cover story)
 // and sends it to QLab. Shared by the [r] hotkey and OSC /random_low.
 func (m model) insertRandomLow() model {
-	l := float64(1 + time.Now().UnixNano()%5)
+	l := float64(1 + time.Now().UnixNano()%50)
 	m.histNext++
 	m.history = append(m.history, ScoreRecord{
 		N: m.histNext, Time: time.Now(),
