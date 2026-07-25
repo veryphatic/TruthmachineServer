@@ -82,6 +82,11 @@ type model struct {
 	logLines  []string // raw JSONL lines (un-styled); re-filtered on every append + filter change
 	logFilter logFilter
 
+	// Dashboard and help panes (bubbles/viewport) — scroll via ↑/↓/PgUp/PgDn
+	// when their rendered content is taller than the terminal window.
+	dashVP viewport.Model
+	helpVP viewport.Model
+
 	// Input modal
 	inputMode inputKind
 	textInput textinput.Model
@@ -119,6 +124,8 @@ func newModel(gsr *GSRProcessor, hr *HRProcessor, rr *RRProcessor,
 		height:      40,
 	}
 	m.logVP = initLogViewport(m.width, m.height)
+	m.dashVP = viewport.New(m.width, m.height)
+	m.helpVP = viewport.New(m.width, m.height)
 	return m
 }
 
@@ -148,6 +155,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logVP.Height = vpH
 		m.logVP.SetContent(strings.Join(m.logLines, "\n"))
 		m.logVP.GotoBottom()
+		m.dashVP.Width = m.width
+		m.dashVP.Height = m.height
+		m.dashVP.SetContent(renderDashboard(m))
+		m.helpVP.Width = m.width
+		m.helpVP.Height = m.height
+		if m.view == viewHelp {
+			m.helpVP.SetContent(buildHelpPanel(m.width))
+		}
 		return m, nil
 
 	case TickMsg:
@@ -161,6 +176,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.quitArmed && time.Since(m.quitAt) > 2500*time.Millisecond {
 			m.quitArmed = false
 		}
+		// Keep the persisted viewport's content in sync so scroll-key handling
+		// in Update() (which never runs View()'s throwaway model copy) has
+		// real line data to scroll against.
+		m.dashVP.SetContent(renderDashboard(m))
 		return m, tickCmd()
 
 	case ScoredMsg:
@@ -251,10 +270,24 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleLogKey(msg)
 	}
 
-	// Help view: any key closes.
+	// Help view: arrow/page keys scroll, any other key closes.
 	if m.view == viewHelp {
+		switch msg.String() {
+		case "up", "down", "pgup", "pgdown":
+			var cmd tea.Cmd
+			m.helpVP, cmd = m.helpVP.Update(msg)
+			return m, cmd
+		}
 		m.view = viewDashboard
 		return m, nil
+	}
+
+	// Dashboard: arrow/page keys scroll when content overflows the window.
+	switch msg.String() {
+	case "up", "down", "pgup", "pgdown":
+		var cmd tea.Cmd
+		m.dashVP, cmd = m.dashVP.Update(msg)
+		return m, cmd
 	}
 
 	// Dashboard hotkeys. Case-insensitive: shifted/caps-lock letters behave the same.
@@ -304,6 +337,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "?":
 		m.view = viewHelp
+		m.helpVP.SetContent(buildHelpPanel(m.width))
+		m.helpVP.GotoTop()
 
 	case "q":
 		if m.quitArmed {
@@ -561,7 +596,8 @@ func (m model) View() string {
 		if m.inputMode != inputNone {
 			content = renderModal(m, dash)
 		} else {
-			content = dash
+			m.dashVP.SetContent(dash)
+			content = m.dashVP.View()
 		}
 	}
 	// Pad to terminal height so Bubble Tea clears ghost lines on resize.
