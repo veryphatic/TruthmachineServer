@@ -99,6 +99,7 @@ func (b *OSCBridge) startInbound(listenAddr string) error {
 		b.rr.StartInterrogate()
 	})
 	add("/reset", func() {
+		b.log.Rotate()
 		b.gsr.FreshenBaseline()
 		b.hr.FreshenBaseline()
 		b.rr.FreshenBaseline()

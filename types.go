@@ -108,6 +108,7 @@ const (
 	ProcEventMuteToggle       // OSC /mute/{gsr,hr,rr} — Channel identifies which to toggle
 	ProcEventRandomLow        // OSC /random_low — same as [r] hotkey
 	ProcEventManualL          // OSC /manual_l — Value carries the L override
+	ProcEventShowHistory      // OSC /history — same as [h] hotkey
 )
 
 type ProcessorEvent struct {

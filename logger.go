@@ -15,15 +15,61 @@ type AppLogger struct {
 	f     *os.File
 	mu    sync.Mutex
 	LogCh chan string
+
+	baseName    string // e.g. "truthmachine-v2-2026-07-25", used to build rotated file names
+	rotateIndex int    // last "-N" suffix used by Rotate; 0 means still on the original file
 }
 
 func newLogger() (*AppLogger, error) {
-	name := "truthmachine-v2-" + time.Now().Format("2006-01-02") + ".log"
-	f, err := os.OpenFile(name, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	base := "truthmachine-v2-" + time.Now().Format("2006-01-02")
+	f, err := os.OpenFile(base+".log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("open log: %w", err)
 	}
-	return &AppLogger{f: f, LogCh: make(chan string, 500)}, nil
+	return &AppLogger{f: f, LogCh: make(chan string, 500), baseName: base}, nil
+}
+
+// Rotate closes the current log file and opens a new one named
+// "{baseName}-N.log" (N incrementing from 1, skipping any name already used
+// today, e.g. by an earlier run). Called on the operator's "end of
+// performance" reset gesture (OSC /reset, [x] confirmed reset) so a full
+// day's worth of multi-show logging never piles up in one large file.
+// Failures are logged to the current file and otherwise ignored — logging
+// must never block or crash the show.
+func (l *AppLogger) Rotate() {
+	l.mu.Lock()
+	oldName := ""
+	if l.f != nil {
+		oldName = l.f.Name()
+	}
+
+	var newFile *os.File
+	var newName string
+	for {
+		l.rotateIndex++
+		candidate := fmt.Sprintf("%s-%d.log", l.baseName, l.rotateIndex)
+		f, err := os.OpenFile(candidate, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+		if err == nil {
+			newFile = f
+			newName = candidate
+			break
+		}
+		if os.IsExist(err) {
+			continue // name already used today (e.g. an earlier run) — try the next index
+		}
+		l.mu.Unlock()
+		l.Event(channelSystem, "log_rotate_error", "err", err.Error())
+		return
+	}
+
+	old := l.f
+	l.f = newFile
+	l.mu.Unlock()
+
+	if old != nil {
+		_ = old.Close()
+	}
+	l.Event(channelSystem, "log_rotated", "previous_file", oldName, "new_file", newName)
 }
 
 func (l *AppLogger) Close() {

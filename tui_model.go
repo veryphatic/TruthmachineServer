@@ -433,6 +433,7 @@ func (m model) handleModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if m.inputMode == inputResetConfirm {
 		if strings.ToLower(msg.String()) == "y" {
+			m.log.Rotate()
 			m.gsrProc.FreshenBaseline()
 			m.hrProc.FreshenBaseline()
 			m.rrProc.FreshenBaseline()

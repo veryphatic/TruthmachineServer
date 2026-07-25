@@ -60,7 +60,7 @@ func buildHelpPanel(width int) string {
 	sb.WriteString(row("[u]  mute", "Toggle a channel out of the combined L weighting") + "\n")
 	sb.WriteString(row("[l]  log", "Full-screen live JSONL event log — PgUp/PgDn to scroll, [l]/esc to close") + "\n")
 	sb.WriteString(row("[h]  history", "Full-screen session history, uncapped — any key to close") + "\n")
-	sb.WriteString(row("[x]  reset", "Confirm [y] to clear ALL baselines + history — marks end of performance") + "\n")
+	sb.WriteString(row("[x]  reset", "Confirm [y]: clears baselines + history, rotates to a new log file") + "\n")
 	sb.WriteString(row("[?]  help", "This screen — any key to close") + "\n")
 	sb.WriteString(row("[q]  quit", "Press twice within 2.5s to exit") + "\n")
 
@@ -86,7 +86,7 @@ func buildHelpPanel(width int) string {
 	sb.WriteString(d.Render("Inbound, no arguments (QLab → server):") + "\n")
 	sb.WriteString(row("/calibrate", "Starts 15s batch calibration on all channels") + "\n")
 	sb.WriteString(row("/interrogate", "Starts 8s scoring window on all channels") + "\n")
-	sb.WriteString(row("/reset", "Freshens baselines + clears history — same as [x][y], no confirm") + "\n")
+	sb.WriteString(row("/reset", "Clears baselines + history, rotates log file — same as [x][y], no confirm") + "\n")
 	sb.WriteString(row("/baseline", "Freshens baselines only, history untouched — same as [b]") + "\n")
 	sb.WriteString(row("/mute/gsr", "Toggles GSR out of the combined L weighting — same as [u][g]") + "\n")
 	sb.WriteString(row("/mute/hr", "Toggles HR out of the combined L weighting — same as [u][h]") + "\n")
